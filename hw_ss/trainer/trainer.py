@@ -12,7 +12,6 @@ from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 from hw_ss.base import BaseTrainer
-from hw_ss.base.base_text_encoder import BaseTextEncoder
 from hw_ss.logger.utils import plot_spectrogram_to_buf
 from hw_ss.metric.pesq import PESQMetric
 import pyloudnorm as pyln
@@ -34,6 +33,7 @@ class Trainer(BaseTrainer):
             config,
             device,
             dataloaders,
+            logging_epoch = 10,
             lr_scheduler=None,
             lr_scheduler_name=None,
             len_epoch=None,
@@ -41,6 +41,7 @@ class Trainer(BaseTrainer):
     ):
         super().__init__(model, criterion, metrics, optimizer, config, device)
         self.skip_oom = skip_oom
+        self.logging_epoch = logging_epoch
         self.lr_scheduler_name = lr_scheduler_name
         self.config = config
         self.train_dataloader = dataloaders["train"]
@@ -135,12 +136,13 @@ class Trainer(BaseTrainer):
                 break
         log = last_train_metrics
 
-        for part, dataloader in self.evaluation_dataloaders.items():
-            val_log = self._evaluation_epoch(epoch, part, dataloader)
-            if  (self.lr_scheduler is not None) and (self.lr_scheduler_name=="ReduceLROnPlateau"):
-                if part == "val-other":
-                    self.lr_scheduler.step(val_log["loss"])
-            log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
+        if (epoch % self.logging_epoch) == 0:
+            for part, dataloader in self.evaluation_dataloaders.items():
+                val_log = self._evaluation_epoch(epoch, part, dataloader)
+                if  (self.lr_scheduler is not None) and (self.lr_scheduler_name=="ReduceLROnPlateau"):
+                    if part == "val-other":
+                        self.lr_scheduler.step(val_log["loss"])
+                log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
 
         return log
 

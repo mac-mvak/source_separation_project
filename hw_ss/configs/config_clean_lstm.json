@@ -89,6 +89,7 @@
     "visualize": "wandb",
     "wandb_project": "ss_project",
     "len_epoch": 50,
-    "grad_norm_clip": 10
+    "grad_norm_clip": 10,
+    "logging_epoch": 10
   }
 }

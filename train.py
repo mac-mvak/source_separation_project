@@ -66,6 +66,7 @@ def main(config):
         lr_scheduler=lr_scheduler,
         lr_scheduler_name = lr_scheduler_name,
         len_epoch=config["trainer"].get("len_epoch", None)
+        logging_epoch=config["trainer"].get('logging_epoch', 10)
     )
 
     trainer.train()
