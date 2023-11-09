@@ -14,7 +14,9 @@ from tqdm import tqdm
 from hw_ss.base import BaseTrainer
 from hw_ss.base.base_text_encoder import BaseTextEncoder
 from hw_ss.logger.utils import plot_spectrogram_to_buf
-from hw_ss.metric.utils import calc_cer, calc_wer
+from hw_ss.metric.pesq import PESQMetric
+import pyloudnorm as pyln
+from hw_ss.metric.si_sdr_metric import SISDRMetric
 from hw_ss.utils import inf_loop, MetricTracker
 
 
@@ -67,7 +69,8 @@ class Trainer(BaseTrainer):
         """
         for tensor_for_gpu in ["ref_audios", "mix_audios",
                                 "target_audios", "ref_audios_length",
-                                "mix_audios_length", "target_audios_length"]:
+                                "mix_audios_length", "target_audios_length",
+                                "target_ids"]:
             batch[tensor_for_gpu] = batch[tensor_for_gpu].to(device)
         return batch
 
@@ -122,9 +125,8 @@ class Trainer(BaseTrainer):
                 self.writer.add_scalar(
                    "learning rate", lr_epoch
                 )
-                #self._log_predictions(**batch)
-                #self._log_spectrogram(batch["spectrogram"])
-                #self._log_scalars(self.train_metrics)
+                self._log_predictions(**batch)
+                self._log_scalars(self.train_metrics)
                 # we don't want to reset train metrics at the start of every epoch
                 # because we are interested in recent train metrics
                 last_train_metrics = self.train_metrics.result()
@@ -132,8 +134,6 @@ class Trainer(BaseTrainer):
             if batch_idx >= self.len_epoch:
                 break
         log = last_train_metrics
-        last_audio = batch['short_decode'][0:1].squeeze(0).detach().cpu()
-        torchaudio.save(f'samples/{epoch}.wav', last_audio, 16000, format='wav')
 
         for part, dataloader in self.evaluation_dataloaders.items():
             val_log = self._evaluation_epoch(epoch, part, dataloader)
@@ -191,7 +191,6 @@ class Trainer(BaseTrainer):
             self.writer.set_step(epoch * self.len_epoch, part)
             self._log_scalars(self.evaluation_metrics)
             self._log_predictions(**batch)
-            self._log_spectrogram(batch["spectrogram"])
 
         # add histogram of model parameters to the tensorboard
         for name, p in self.model.named_parameters():
@@ -207,44 +206,49 @@ class Trainer(BaseTrainer):
             current = batch_idx
             total = self.len_epoch
         return base.format(current, total, 100.0 * current / total)
+    
+    def _normalise_aud(self, aud, sr=16000):
+        meter = pyln.Meter(sr)
+        aud = aud.squeeze().detach().cpu().numpy()
+        loud = meter.integrated_loudness(aud)
+        return pyln.normalize.loudness(aud, loud, -20.0)
 
     def _log_predictions(
             self,
-            text,
-            log_probs,
-            log_probs_length,
-            audio_path,
-            audio,
-            examples_to_log=10,
+            short_decode,
+            ref_audios,
+            target_audios,
+            mix_audios,
+            target_audios_length,
+            audio_names,
+            examples_to_log=5,
             *args,
             **kwargs,
     ):
         # TODO: implement logging of beam search results
         if self.writer is None:
             return
-        argmax_inds = log_probs.cpu().argmax(-1).numpy()
-        argmax_inds = [
-            inds[: int(ind_len)]
-            for inds, ind_len in zip(argmax_inds, log_probs_length.numpy())
-        ]
-        argmax_texts_raw = [self.text_encoder.decode(inds) for inds in argmax_inds]
-        argmax_texts = [self.text_encoder.ctc_decode(inds) for inds in argmax_inds]
-        tuples = list(zip(argmax_texts, text, argmax_texts_raw, audio_path, audio))
+        tuples = list(zip(short_decode, ref_audios, target_audios, target_audios_length, audio_names, mix_audios))
         shuffle(tuples)
         rows = {}
-        for pred, target, raw_pred, audio_path, audio in tuples[:examples_to_log]:
-            target = BaseTextEncoder.normalize_text(target)
-            wer = calc_wer(target, pred) * 100
-            cer = calc_cer(target, pred) * 100
+        pesq_metric = PESQMetric()
+        si_sdr_metric = SISDRMetric()
+        for ans, ref, target, length, name, mix in tuples[:examples_to_log]:
+            ans = ans.unsqueeze(0)
+            ref = ref.unsqueeze(0)
+            target = target.unsqueeze(0)
+            mix = mix.unsqueeze(0)
+            length = torch.tensor([length], dtype=int)
+            pesq = pesq_metric(ans, target, length)
+            si_sdr = si_sdr_metric(ans, target, length)
 
-            rows[Path(audio_path).name] = {
-                "orig_audio" : self.writer.wandb.Audio(audio_path),
-                "augm_audio" : self.writer.wandb.Audio(audio.squeeze().numpy(), sample_rate=16000),
-                "target": target,
-                "raw prediction": raw_pred,
-                "predictions": pred,
-                "wer": wer,
-                "cer": cer,
+            rows[name] = {
+                "target_audio" : self.writer.wandb.Audio(target.squeeze().cpu().numpy(), sample_rate=16000),
+                "ref_audio" : self.writer.wandb.Audio(ref.squeeze().cpu().numpy(), sample_rate=16000),
+                "mix_audio" : self.writer.wandb.Audio(mix.squeeze().cpu().numpy(), sample_rate=16000),
+                "pesq": pesq,
+                "si_sdr": si_sdr,
+                "prediction": self.writer.wandb.Audio(self._normalise_aud(ans), sample_rate=16000)
             }
         self.writer.add_table("predictions", pd.DataFrame.from_dict(rows, orient="index"))
 

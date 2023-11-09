@@ -28,6 +28,18 @@ class SISDRLoss(nn.Module):
         return anses.mean()
 
 
+class SpexLoss(nn.Module):
+    def __init__(self, alpha=0.1, beta=0.1, gamma=0.5):
+        super().__init__()
+        self.gamma = gamma
+        self.sisdr_loss = SISDRLoss(alpha, beta)
+        self.ce_loss = nn.CrossEntropyLoss()
+    
+    def forward(self, **batch):
+        sdr = self.sisdr_loss(**batch)
+        ce = self.ce_loss(batch['class_lin'], batch['target_ids'])
+        return sdr + self.gamma * ce
+
 
 
 

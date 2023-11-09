@@ -12,6 +12,7 @@ class SISDRMetric(BaseMetric):
 
 
     def si_sdr(self, est, target, length):
+        self.metric = self.metric.to(est.device)
         est, target = est.squeeze()[:length], target.squeeze()[:length]
         if est.shape[-1] < length:
             est = F.pad(est, (0, length - est.shape[-1]))

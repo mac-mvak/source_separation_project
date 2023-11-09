@@ -1,15 +1,8 @@
-import torch
-import torch.nn.functional as F
-import torchaudio
-from torchmetrics.audio.pesq import PerceptualEvaluationSpeechQuality
+from pathlib import Path
 
 
-metric = PerceptualEvaluationSpeechQuality(16000, mode='wb')
 
-target, _ = torchaudio.load('/home/mac-mvak/code_disk/hw2/samples/1018_101_005738_0-target.wav')
-pred, _ = torchaudio.load('/home/mac-mvak/code_disk/hw2/samples/6.wav')
+a = "/home/mac-mvak/code_disk/hw2/data/datasets/mixture/train/1018_101_005738_0-ref.wav"
 
-res1 = metric(pred, target)
-res2 = metric(pred/5, target)
-print(res1, res2)
-
+w = Path(a).name
+print(w)

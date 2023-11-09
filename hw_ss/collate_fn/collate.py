@@ -1,8 +1,9 @@
 import logging
 import torch
 import torch.nn as nn
-from torch import tensor
 from typing import List
+from pathlib import Path
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ def collate_fn(dataset_items: List[dict]):
     target_ids = []
     noise_ids = []
     snrs = []
+    audio_names = []
     for item in dataset_items:
         ref_audios = adder(ref_audios, item['ref_audio'])
         mix_audios = adder(mix_audios, item['mix_audio'])
@@ -42,15 +44,19 @@ def collate_fn(dataset_items: List[dict]):
         target_ids.append(item['target_id'])
         noise_ids.append(item['noise_id'])
         snrs.append(item['snr'])
+        audio_names.append(
+            Path(item['audio_paths'][0]).name[:-8]
+        )
     result_batch = {'ref_audios' : ref_audios, 
                     'mix_audios' : mix_audios,
                     'target_audios' : target_audios,
                     'ref_audios_length': torch.tensor(ref_audios_length, dtype=int),
                     "mix_audios_length" : torch.tensor(mix_audios_length, dtype=int),
                     "target_audios_length": torch.tensor(target_audios_length, dtype=int),
-                    "target_ids": target_ids,
-                    "noise_ids" : noise_ids,
-                    "snrs" : snrs
+                    "target_ids": torch.tensor(target_ids, dtype=int),
+                    "noise_ids" : torch.tensor(noise_ids, dtype=int),
+                    "snrs" : snrs,
+                    "audio_names" : audio_names
                     }
     return result_batch
 

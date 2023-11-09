@@ -28,9 +28,19 @@
         {
           "type": "MixedDataset",
           "args": {
-            "part": "train",
-            "max_audio_length": 20.0,
-            "max_text_length": 200
+            "part": "train"
+          }
+        }
+      ]
+    },
+    "val": {
+      "batch_size": 5,
+      "num_workers": 5,
+      "datasets": [
+        {
+          "type": "MixedDataset",
+          "args": {
+            "part": "val"
           }
         }
       ]
@@ -43,11 +53,24 @@
     }
   },
   "loss": {
-    "type": "SISDRLoss",
+    "type": "SpexLoss",
     "args": {"alpha": 0.1,
-            "beta": 0.1}
+            "beta": 0.1,
+            "gamma": 0.5}
   },
   "metrics": [
+    {
+      "type": "SISDRMetric",
+      "args": {
+        "name": "SI-SDR"
+      }
+    },
+    {
+      "type": "PESQMetric",
+      "args": {
+        "name": "PESQ"
+      }
+    }
   ],
   "lr_scheduler": {
     "type": "ReduceLROnPlateau",
@@ -64,7 +87,7 @@
     "monitor": "min val_loss",
     "early_stop": 100,
     "visualize": "wandb",
-    "wandb_project": "asr_project",
+    "wandb_project": "ss_project",
     "len_epoch": 50,
     "grad_norm_clip": 10
   }
