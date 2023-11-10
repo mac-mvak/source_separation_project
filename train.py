@@ -65,8 +65,7 @@ def main(config):
         dataloaders=dataloaders,
         lr_scheduler=lr_scheduler,
         lr_scheduler_name = lr_scheduler_name,
-        len_epoch=config["trainer"].get("len_epoch", None),
-        logging_epoch=config["trainer"].get('logging_epoch', 10)
+        len_epoch=config["trainer"].get("len_epoch", None)
     )
 
     trainer.train()
@@ -77,7 +76,7 @@ if __name__ == "__main__":
     args.add_argument(
         "-c",
         "--config",
-        default="/home/mac-mvak/code_disk/hw2/hw_ss/configs/config_clean_lstm.json",
+        default="hw_ss/configs/spex_plus.json",
         type=str,
         help="config file path (default: None)",
     )

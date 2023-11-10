@@ -12,6 +12,7 @@ from torchvision.transforms import ToTensor
 from tqdm import tqdm
 
 from hw_ss.base import BaseTrainer
+from hw_ss.base.base_text_encoder import BaseTextEncoder
 from hw_ss.logger.utils import plot_spectrogram_to_buf
 from hw_ss.metric.pesq import PESQMetric
 import pyloudnorm as pyln
@@ -33,7 +34,6 @@ class Trainer(BaseTrainer):
             config,
             device,
             dataloaders,
-            logging_epoch = 10,
             lr_scheduler=None,
             lr_scheduler_name=None,
             len_epoch=None,
@@ -41,7 +41,6 @@ class Trainer(BaseTrainer):
     ):
         super().__init__(model, criterion, metrics, optimizer, config, device)
         self.skip_oom = skip_oom
-        self.logging_epoch = logging_epoch
         self.lr_scheduler_name = lr_scheduler_name
         self.config = config
         self.train_dataloader = dataloaders["train"]
@@ -54,7 +53,7 @@ class Trainer(BaseTrainer):
             self.len_epoch = len_epoch
         self.evaluation_dataloaders = {k: v for k, v in dataloaders.items() if k != "train"}
         self.lr_scheduler = lr_scheduler
-        self.log_step = 50
+        self.log_step = 100
 
         self.train_metrics = MetricTracker(
             "loss", "grad norm", *[m.name for m in self.metrics], writer=self.writer
@@ -135,14 +134,13 @@ class Trainer(BaseTrainer):
             if batch_idx >= self.len_epoch:
                 break
         log = last_train_metrics
-
-        if (epoch % self.logging_epoch) == 0:
-            for part, dataloader in self.evaluation_dataloaders.items():
-                val_log = self._evaluation_epoch(epoch, part, dataloader)
-                if  (self.lr_scheduler is not None) and (self.lr_scheduler_name=="ReduceLROnPlateau"):
-                    if part == "val-other":
-                        self.lr_scheduler.step(val_log["loss"])
-                log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
+        
+        for part, dataloader in self.evaluation_dataloaders.items():
+            val_log = self._evaluation_epoch(epoch, part, dataloader)
+            if  (self.lr_scheduler is not None) and (self.lr_scheduler_name=="ReduceLROnPlateau"):
+                if part == "val":
+                    self.lr_scheduler.step(val_log["loss"])
+            log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
 
         return log
 
@@ -195,8 +193,8 @@ class Trainer(BaseTrainer):
             self._log_predictions(**batch)
 
         # add histogram of model parameters to the tensorboard
-        for name, p in self.model.named_parameters():
-            self.writer.add_histogram(name, p, bins="auto")
+        #for name, p in self.model.named_parameters():
+        #    self.writer.add_histogram(name, p, bins="auto")
         return self.evaluation_metrics.result()
 
     def _progress(self, batch_idx):

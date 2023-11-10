@@ -17,13 +17,14 @@
   "arch": {
     "type": "SpEx_Plus",
     "args": {
-      "num_spks" : 101
+      "num_spks" : 101,
+      "causal" : true
     }
   },
   "data": {
     "train": {
-      "batch_size": 1,
-      "num_workers": 1,
+      "batch_size": 6,
+      "num_workers": 2,
       "datasets": [
         {
           "type": "MixedDataset",
@@ -34,8 +35,8 @@
       ]
     },
     "val": {
-      "batch_size": 5,
-      "num_workers": 5,
+      "batch_size": 10,
+      "num_workers": 2,
       "datasets": [
         {
           "type": "MixedDataset",
@@ -49,7 +50,8 @@
   "optimizer": {
     "type": "Adam",
     "args": {
-      "lr": 3e-4
+      "lr": 3e-4,
+      "weight_decay": 1e-5
     }
   },
   "loss": {
@@ -73,14 +75,17 @@
     }
   ],
   "lr_scheduler": {
-    "type": "ReduceLROnPlateau",
+    "type": "OneCycleLR",
     "args": {
-      "factor":0.5,
-      "patience":5
-    }
+            "steps_per_epoch": 1000,
+            "epochs": 50,
+            "anneal_strategy": "cos",
+            "max_lr": 1e-3,
+            "pct_start": 0.075
+        }
   },
   "trainer": {
-    "epochs": 100,
+    "epochs": 50,
     "save_dir": "saved/",
     "save_period": 5,
     "verbosity": 2,
@@ -88,8 +93,7 @@
     "early_stop": 100,
     "visualize": "wandb",
     "wandb_project": "ss_project",
-    "len_epoch": 50,
-    "grad_norm_clip": 10,
-    "logging_epoch": 10
+    "len_epoch": 1000,
+    "grad_norm_clip": 10
   }
 }

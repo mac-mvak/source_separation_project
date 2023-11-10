@@ -128,12 +128,18 @@ class SpEx_Plus(nn.Module):
         S1 = w1 * m1
         S2 = w2 * m2
         S3 = w3 * m3
+        short_decode = self.decoder_1d_short(S1).squeeze()[:, :xlen1]
+        medium_decode = self.decoder_1d_middle(S2).squeeze()[:, :xlen1]
+        long_decode = self.decoder_1d_long(S3).squeeze()[:, :xlen1]
+        pred_linear = self.pred_linear(aux)
+        if short_decode.shape[-1] < xlen1:
+            short_decode = F.pad(short_decode, [0, xlen1-short_decode.shape[-1]])
 
         return {
-            "short_decode" : self.decoder_1d_short(S1),
-            "medium_decode": self.decoder_1d_middle(S2)[:, :xlen1],
-            "long_decode": self.decoder_1d_long(S3)[:, :xlen1],
-            "class_lin": self.pred_linear(aux)
+            "short_decode" : short_decode,
+            "medium_decode": medium_decode,
+            "long_decode": long_decode,
+            "class_lin": pred_linear
         }
 
 
