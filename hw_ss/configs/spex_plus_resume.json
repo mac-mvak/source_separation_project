@@ -1,0 +1,97 @@
+{
+    "name": "default_config",
+    "n_gpu": 1,
+    "preprocessing": {
+        "sr": 16000,
+        "spectrogram": {
+            "type": "MelSpectrogram",
+            "args": {}
+        },
+        "log_spec": true
+    },
+    "augmentations": {
+        "wave": [],
+        "spectrogram": []
+    },
+    "arch": {
+        "type": "SpEx_Plus",
+        "args": {
+            "num_spks": 251,
+            "causal": true
+        }
+    },
+    "data": {
+        "train": {
+            "batch_size": 7,
+            "num_workers": 2,
+            "datasets": [
+                {
+                    "type": "MixedDataset",
+                    "args": {
+                        "part": "train"
+                    }
+                }
+            ]
+        },
+        "val": {
+            "batch_size": 10,
+            "num_workers": 2,
+            "datasets": [
+                {
+                    "type": "MixedDataset",
+                    "args": {
+                        "part": "val"
+                    }
+                }
+            ]
+        }
+    },
+    "optimizer": {
+        "type": "Adam",
+        "args": {
+            "lr": 1e-3,
+            "weight_decay": 1e-05
+        }
+    },
+    "loss": {
+        "type": "SpexLoss",
+        "args": {
+            "alpha": 0.1,
+            "beta": 0.1,
+            "gamma": 0.5
+        }
+    },
+    "metrics": [
+        {
+            "type": "SISDRMetric",
+            "args": {
+                "name": "SI-SDR"
+            }
+        },
+        {
+            "type": "PESQMetric",
+            "args": {
+                "name": "PESQ"
+            }
+        }
+    ],
+    "lr_scheduler": {
+        "type": "ReduceLROnPlateau",
+        "args": {
+          "factor": 0.5,
+          "patience": 2
+        }
+    },
+    "trainer": {
+        "epochs": 600,
+        "save_dir": "saved/",
+        "save_period": 5,
+        "verbosity": 2,
+        "monitor": "min val_loss",
+        "early_stop": 100,
+        "visualize": "wandb",
+        "wandb_project": "ss_project",
+        "len_epoch": 700,
+        "grad_norm_clip": 10
+    }
+}

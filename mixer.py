@@ -18,8 +18,6 @@ import shutil
 import matplotlib.pyplot as plt
 
 import torch
-from torchmetrics.audio import SignalDistortionRatio, ScaleInvariantSignalDistortionRatio
-from IPython import display
 from hw_ss.utils import ROOT_PATH
 
 from concurrent.futures import ProcessPoolExecutor
@@ -30,7 +28,7 @@ warnings.filterwarnings("ignore")
 
 URL_LINKS = {
     "dev-clean": "https://www.openslr.org/resources/12/dev-clean.tar.gz",
-    "train-clean-360": "https://www.openslr.org/resources/12/train-clean-360.tar.gz"
+    "train-clean-100": "https://www.openslr.org/resources/12/train-clean-100.tar.gz"
 }
 
 
@@ -294,7 +292,7 @@ def normalized_numbers(speakers_list):
 class LibriSpeechDownloader:
     def __init__(self, type="train"):
         if type == "train":
-            self.part = "train-clean-360"
+            self.part = "train-clean-100"
         else:
             self.part = "dev-clean"
         data_dir = ROOT_PATH / "data" / "datasets" / "librispeech"
@@ -359,34 +357,34 @@ class LibriSpeechDownloader:
 
 
 path_train = LibriSpeechDownloader("train").path()
-path_val = LibriSpeechDownloader("test").path()
+#path_val = LibriSpeechDownloader("test").path()
 
 
 
 path_mixtures_train = ROOT_PATH / "data/datasets/mixture/train"
 path_mixtures_train.mkdir(exist_ok=True, parents=True)
-path_mixtures_val = ROOT_PATH / "data/datasets/mixture/val"
-path_mixtures_val.mkdir(exist_ok=True, parents=True)
+#path_mixtures_val = ROOT_PATH / "data/datasets/mixture/val"
+#path_mixtures_val.mkdir(exist_ok=True, parents=True)
 
 
 speakersTrain = [el.name for el in os.scandir(path_train)]
 train_speakers_dict = normalized_numbers(speakersTrain)
-speakersVal = [el.name for el in os.scandir(path_val)]
-val_speakers_dict = normalized_numbers(speakersVal)
+#speakersVal = [el.name for el in os.scandir(path_val)]
+#val_speakers_dict = normalized_numbers(speakersVal)
 
 
-speakers_files_train = [LibriSpeechSpeakerFiles(i, train_speakers_dict, path_train, audioTemplate="*.flac") for i in speakersTrain][:101]
-speakers_files_val = [LibriSpeechSpeakerFiles(i, val_speakers_dict, path_val, audioTemplate="*.flac") for i in speakersVal]
+speakers_files_train = [LibriSpeechSpeakerFiles(i, train_speakers_dict, path_train, audioTemplate="*.flac") for i in speakersTrain][:251]
+#speakers_files_val = [LibriSpeechSpeakerFiles(i, val_speakers_dict, path_val, audioTemplate="*.flac") for i in speakersVal]
 
 mixer_train = MixtureGenerator(speakers_files_train,
                                 path_mixtures_train,
-                                nfiles=10000,
+                                nfiles=5000,
                                 test=False, name="train")
 
-mixer_val = MixtureGenerator(speakers_files_val,
-                                path_mixtures_val,
-                                nfiles=200,
-                                test=True, name="val")
+#mixer_val = MixtureGenerator(speakers_files_val,
+#                                path_mixtures_val,
+#                                nfiles=200,
+#                                test=True, name="val")
 
 
 mixer_train.generate_mixes(snr_levels=[0],
@@ -396,11 +394,11 @@ mixer_train.generate_mixes(snr_levels=[0],
                            vad_db=20,
                            audioLen=3)
 
-mixer_val.generate_mixes(snr_levels=[0],
-                           num_workers=8,
-                           update_steps=10,
-                           trim_db=20,
-                           vad_db=20,
-                           audioLen=3)
-
+#mixer_val.generate_mixes(snr_levels=[0],
+#                           num_workers=8,
+#                           update_steps=10,
+##                           trim_db=20,
+#                           vad_db=20,
+#                           audioLen=3)
+##
 

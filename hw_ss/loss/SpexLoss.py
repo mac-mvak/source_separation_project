@@ -32,7 +32,10 @@ class SpexLoss(nn.Module):
     
     def forward(self, **batch):
         sdr = self.sisdr_loss(**batch)
-        ce = self.ce_loss(batch['class_lin'], batch['target_ids'])
+        if batch['is_train']:
+            ce = self.ce_loss(batch['class_lin'], batch['target_ids'])
+        else:
+            ce = 0
         return sdr + self.gamma * ce
 
 
