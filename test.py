@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from hw_ss.metric.utils import calc_cer, calc_wer
 from hw_ss.utils import MetricTracker
+from hw_ss.metric import PESQMetric, SISDRMetric
 
 
 import torch
@@ -25,13 +26,12 @@ def main(config, out_file):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # text_encoder
-    text_encoder = config.get_text_encoder()
 
     # setup data_loader instances
-    dataloaders = get_dataloaders(config, text_encoder)
+    dataloaders = get_dataloaders(config)
 
     # build model architecture
-    model = config.init_obj(config["arch"], module_model, n_class=len(text_encoder))
+    model = config.init_obj(config["arch"], module_model)
     logger.info(model)
 
     logger.info("Loading checkpoint: {} ...".format(config.resume))
@@ -44,10 +44,11 @@ def main(config, out_file):
     # prepare model for testing
     model = model.to(device)
     model.eval()
-
+    pesq_metric = PESQMetric()
+    sisdr_metric = SISDRMetric()
     results = []
 
-    metrics_keys =["cer_argmax", "wer_argmax", "cer_beam", "wer_beam", "cer_model", "wer_model"]
+    metrics_keys =["pesq", "si-sdr"]
     metrics = MetricTracker(*metrics_keys)
     with torch.no_grad():
         for batch_num, batch in enumerate(tqdm(dataloaders["test"])):
@@ -57,38 +58,10 @@ def main(config, out_file):
                 batch.update(output)
             else:
                 batch["logits"] = output
-            batch["log_probs"] = torch.log_softmax(batch["logits"], dim=-1)
-            batch["log_probs_length"] = model.transform_input_lengths(
-                batch["spectrogram_length"]
-            )
-            batch["probs"] = batch["log_probs"].exp().cpu()
-            batch["argmax"] = batch["probs"].argmax(-1)
-            for i in range(len(batch["text"])):
-                argmax = batch["argmax"][i]
-                argmax = argmax[: int(batch["log_probs_length"][i])]
-                pred_argmax = text_encoder.ctc_decode(argmax.cpu().numpy())
-                pred_model = text_encoder.ctc_model_search(batch["log_probs"][i].cpu().numpy(),
-                    batch["log_probs_length"][i])
-                pred_beam_search = text_encoder.ctc_beam_search(
-                            batch["probs"][i], batch["log_probs_length"][i], beam_size=5 #small beam_size for faster inference
-                        )[:10]
-                ground_truth = batch["text"][i]
-                results.append(
-                    {
-                        "ground_trurh": batch["text"][i],
-                        "pred_text_argmax": pred_argmax,
-                        "pred_text_beam_search": pred_beam_search,
-                    }
-                )
-                metrics.update("cer_argmax", calc_cer(ground_truth, pred_argmax))
-                metrics.update("wer_argmax", calc_wer(ground_truth, pred_argmax))
-                metrics.update("cer_beam", calc_cer(ground_truth, pred_beam_search[0][0].text))
-                metrics.update("wer_beam", calc_wer(ground_truth, pred_beam_search[0][0].text))
-                metrics.update("cer_model", calc_cer(ground_truth, pred_model))
-                metrics.update("wer_model", calc_wer(ground_truth, pred_model))
+            n = batch['ref_audios'].shape[0]
+            metrics.update("pesq", pesq_metric(**batch).detach().item(), n=n)
+            metrics.update("si-sdr", sisdr_metric(**batch).detach().item(), n=n)
 
-    with Path(out_file).open("w") as f:
-        json.dump(results, f, indent=2)
 
     out_metrics_file = out_file[:-5] + "_metrics.json"
     with Path(out_metrics_file).open("w") as f:
@@ -163,28 +136,6 @@ if __name__ == "__main__":
     if args.config is not None:
         with Path(args.config).open() as f:
             config = ConfigParser(json.load(f), resume=args.resume)
-
-    # if `--test-data-folder` was provided, set it as a default test set
-    if args.test_data_folder is not None:
-        test_data_folder = Path(args.test_data_folder).absolute().resolve()
-        assert test_data_folder.exists()
-        config.config["data"] = {
-            "test": {
-                "batch_size": args.batch_size,
-                "num_workers": args.jobs,
-                "datasets": [
-                    {
-                        "type": "CustomDirAudioDataset",
-                        "args": {
-                            "audio_dir": str(test_data_folder / "audio"),
-                            "transcription_dir": str(
-                                test_data_folder / "transcriptions"
-                            ),
-                        },
-                    }
-                ],
-            }
-        }
 
     assert config.config.get("data", {}).get("test", None) is not None
     config["data"]["test"]["batch_size"] = args.batch_size
