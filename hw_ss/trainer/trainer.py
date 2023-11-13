@@ -141,11 +141,15 @@ class Trainer(BaseTrainer):
                 if part == "val":
                     self.lr_scheduler.step(val_log["loss"])
             log.update(**{f"{part}_{name}": value for name, value in val_log.items()})
+        if ((self.lr_scheduler is not None) and (self.lr_scheduler_name!="OneCycleLR")
+             and (self.lr_scheduler_name!="ReduceLROnPlateau")):
+            self.lr_scheduler.step()    
 
         return log
 
     def process_batch(self, batch, is_train: bool, metrics: MetricTracker):
         batch = self.move_batch_to_device(batch, self.device)
+        batch.update({"is_train": is_train})
         if is_train:
             self.optimizer.zero_grad()
         outputs = self.model(**batch)
@@ -160,7 +164,7 @@ class Trainer(BaseTrainer):
             self._clip_grad_norm()
             self.optimizer.step()
             if self.lr_scheduler is not None:
-                if self.lr_scheduler_name!="ReduceLROnPlateau":
+                if self.lr_scheduler_name=="OneCycleLR":
                     self.lr_scheduler.step()
 
         metrics.update("loss", batch["loss"].item())

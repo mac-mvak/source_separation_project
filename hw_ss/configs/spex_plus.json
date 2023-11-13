@@ -17,14 +17,13 @@
   "arch": {
     "type": "SpEx_Plus",
     "args": {
-      "num_spks" : 101,
-      "causal" : true
+      "num_spks" : 251
     }
   },
   "data": {
     "train": {
-      "batch_size": 6,
-      "num_workers": 2,
+      "batch_size": 5,
+      "num_workers": 1,
       "datasets": [
         {
           "type": "MixedDataset",
@@ -50,7 +49,7 @@
   "optimizer": {
     "type": "Adam",
     "args": {
-      "lr": 3e-4,
+      "lr": 1e-3,
       "weight_decay": 1e-5
     }
   },
@@ -75,15 +74,12 @@
     }
   ],
   "lr_scheduler": {
-    "type": "OneCycleLR",
+    "type": "ReduceLROnPlateau",
     "args": {
-            "steps_per_epoch": 1000,
-            "epochs": 50,
-            "anneal_strategy": "cos",
-            "max_lr": 1e-3,
-            "pct_start": 0.075
-        }
-  },
+      "factor": 0.5,
+      "patience": 2
+    }
+},
   "trainer": {
     "epochs": 50,
     "save_dir": "saved/",
@@ -93,7 +89,7 @@
     "early_stop": 100,
     "visualize": "wandb",
     "wandb_project": "ss_project",
-    "len_epoch": 1000,
+    "len_epoch": 800,
     "grad_norm_clip": 10
   }
 }
