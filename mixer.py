@@ -357,23 +357,23 @@ class LibriSpeechDownloader:
 
 
 path_train = LibriSpeechDownloader("train").path()
-path_val = LibriSpeechDownloader("test").path()
+#path_val = LibriSpeechDownloader("test").path()
 
 
 
 path_mixtures_train = ROOT_PATH / "data/datasets/mixture/train"
 path_mixtures_train.mkdir(exist_ok=True, parents=True)
-path_mixtures_val = ROOT_PATH / "data/datasets/mixture/val"
-path_mixtures_val.mkdir(exist_ok=True, parents=True)
+#path_mixtures_val = ROOT_PATH / "data/datasets/mixture/val"
+#path_mixtures_val.mkdir(exist_ok=True, parents=True)
 
 
 speakersTrain = [el.name for el in os.scandir(path_train)]
 train_speakers_dict = normalized_numbers(speakersTrain)
-speakersVal = [el.name for el in os.scandir(path_val)]
-val_speakers_dict = normalized_numbers(speakersVal)
+#speakersVal = [el.name for el in os.scandir(path_val)]
+#val_speakers_dict = normalized_numbers(speakersVal)
 
 
-speakers_files_train = [LibriSpeechSpeakerFiles(i, train_speakers_dict, path_train, audioTemplate="*.flac") for i in speakersTrain][:251]
+speakers_files_train = [LibriSpeechSpeakerFiles(i, train_speakers_dict, path_train, audioTemplate="*.flac") for i in speakersTrain][:101]
 speakers_files_val = [LibriSpeechSpeakerFiles(i, val_speakers_dict, path_val, audioTemplate="*.flac") for i in speakersVal]
 
 mixer_train = MixtureGenerator(speakers_files_train,
@@ -381,10 +381,10 @@ mixer_train = MixtureGenerator(speakers_files_train,
                                 nfiles=20000,
                                 test=False, name="train")
 
-mixer_val = MixtureGenerator(speakers_files_val,
-                                path_mixtures_val,
-                                nfiles=200,
-                                test=True, name="val")
+#mixer_val = MixtureGenerator(speakers_files_val,
+#                                path_mixtures_val,
+#                                nfiles=200,
+#                                test=True, name="val")
 
 
 mixer_train.generate_mixes(snr_levels=[0],
@@ -394,11 +394,11 @@ mixer_train.generate_mixes(snr_levels=[0],
                            vad_db=20,
                            audioLen=3)
 
-mixer_val.generate_mixes(snr_levels=[0],
-                           num_workers=8,
-                           update_steps=10,
-                           trim_db=20,
-                           vad_db=20,
-                           audioLen=3)
-
+#mixer_val.generate_mixes(snr_levels=[0],
+#                           num_workers=8,
+#                           update_steps=10,
+##                           trim_db=20,
+#                           vad_db=20,
+#                           audioLen=3)
+##
 
