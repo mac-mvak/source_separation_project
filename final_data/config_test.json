@@ -20,18 +20,6 @@
         }
     },
     "data": {
-        "train": {
-            "batch_size": 5,
-            "num_workers": 1,
-            "datasets": [
-                {
-                    "type": "MixedDataset",
-                    "args": {
-                        "part": "train"
-                    }
-                }
-            ]
-        },
         "test": {
             "batch_size": 10,
             "num_workers": 2,
